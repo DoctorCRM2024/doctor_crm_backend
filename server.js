@@ -6,7 +6,14 @@ require('dotenv').config();
 
 // middleware
 app.use(express.json());
-app.use(cors());
+// app.use(cors());
+
+// Configure CORS middleware
+const corsOptions = {
+    origin: 'http://docschedule.in', // Specify your frontend origin
+    credentials: true, // Allow credentials (cookies, authorization headers, etc.)
+  };
+  app.use(cors(corsOptions));
 
 app.use(express.urlencoded({ extended: true }));
 
