@@ -290,10 +290,10 @@ const updateUser = async (req, res) => {
             return res.status(400).json({ message: 'All fields are required.' });
         }
 
-          // Ensure the authenticated user is updating their own details
-          if (req.user.id !== id) {
-            return res.status(403).json({ message: 'Access Denied. You can only update your own details.' });
-        }
+        //   // Ensure the authenticated user is updating their own details
+        //   if (req.user.id !== id) {
+        //     return res.status(403).json({ message: 'Access Denied. You can only update your own details.' });
+        // }
 
         // Find user by ID and update
         const updatedUser = await User.findByIdAndUpdate(
@@ -319,9 +319,9 @@ const deleteUser = async (req, res) => {
         const { id } = req.params; // User ID from URL params
 
          // Ensure the authenticated user is updating their own details
-         if (req.user.id !== id) {
-            return res.status(403).json({ message: 'Access Denied. You can only update your own details.' });
-        }
+        //  if (req.user.id !== id) {
+        //     return res.status(403).json({ message: 'Access Denied. You can only update your own details.' });
+        // }
 
         // Find user by ID and delete
         const deletedUser = await User.findByIdAndDelete(id);
