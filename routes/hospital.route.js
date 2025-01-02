@@ -12,8 +12,8 @@ router.get('/done-schedules',authenticateToken, getHospitalDoneSchedules);
 
 router.get('/export', exportHospitalsToExcel);  // exporting hospitals to excel
 
-router.get('/total-payment/:userId',authenticateToken, getTotalPaymentSummary) // payment summary
-router.get('/total-payment/datewise/:userId',authenticateToken, getTotalPaymentSummaryByDate) // datewise
+router.get('/total-payments',authenticateToken, getTotalPaymentSummary) // payment summary
+router.get('/total-payments/datewise',authenticateToken, getTotalPaymentSummaryByDate) // datewise
 
 
 module.exports= router;

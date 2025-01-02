@@ -26,7 +26,7 @@ router.put('/:scheduleId/payment', authenticateToken, updatePaymentDetails);
 
 router.get('/export-excel', exportSchedulesToExcel);  
 
-router.get('/transactions/:userId', getSchedulesByUserId);
+router.get('/transactions/:userId',authenticateToken, getSchedulesByUserId);  // get schedule transactions by userId 
 
 module.exports = router;
 

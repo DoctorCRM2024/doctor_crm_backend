@@ -426,59 +426,41 @@ const getHospitalDoneSchedules = async (req, res) => {
     }
 };
 
-// Get total payment summary by userId (Doctor or Patient)
 const getTotalPaymentSummary = async (req, res) => {
     try {
-        const { userId } = req.params; // Extract userId from URL parameters
-
-        // Find the user by userId
-        const user = await User.findById(userId);
-        if (!user) {
-            return res.status(404).json({ message: 'User not found!' });
-        }
-
-        // Initialize a variable to store the total payment
+        const userId = req.user._id; // Get user ID from the authenticated user
         let totalAmountReceived = 0;
         let totalDueAmount = 0;
         let totalPayment = 0;
 
-        // Find the schedules based on whether the user is a doctor or a patient
-        let schedules;
-        if (user.role === 'Doctor') {
-            // If the user is a doctor, fetch all schedules where the doctor is assigned
-            schedules = await Schedule.find({ doctor: userId })
-                .populate('doctor', 'fullName')  // Populate doctor's fullName
-                .populate('hospital', 'hospitalName');  // Populate hospital's hospitalName
-        } else {
-            // If the user is a patient, fetch all schedules where the patient is assigned
-            schedules = await Schedule.find({ patientName: user.name })
-                .populate('doctor', 'fullName')  // Populate doctor's fullName
-                .populate('hospital', 'hospitalName');  // Populate hospital's hospitalName
-        }
+        // Fetch schedules for the user (doctor or patient)
+        const schedules = await Schedule.find({
+            $or: [{ doctor: userId }, { patientId: userId }]
+        })
+            .populate('doctor', 'fullName')
+            .populate('hospital', 'hospitalName');
 
-        // If no schedules are found
         if (schedules.length === 0) {
-            return res.status(404).json({ message: 'No schedules found for this user.' });
+            return res.status(404).json({ message: 'No schedules found for the user.' });
         }
 
-        // Format the schedules response and calculate total amounts
+        // Format schedules and calculate totals
         const formattedSchedules = schedules.map(schedule => {
-            const doctorName = schedule.doctor ? schedule.doctor.fullName : 'No doctor assigned';
-            const hospitalName = schedule.hospital ? schedule.hospital.hospitalName : 'No hospital assigned';
+            const doctorName = schedule.doctor?.fullName || 'No doctor assigned';
+            const hospitalName = schedule.hospital?.hospitalName || 'No hospital assigned';
 
-            // Calculate due amount
             const dueAmount = schedule.paymentAmount - (schedule.amountReceived || 0);
             const paymentStatus = dueAmount <= 0 ? 'Done' : 'Pending';
 
             // Accumulate total amounts
             totalAmountReceived += schedule.amountReceived || 0;
-            totalDueAmount += dueAmount;
+            totalDueAmount += dueAmount > 0 ? dueAmount : 0;
             totalPayment += schedule.paymentAmount;
 
             return {
                 _id: schedule._id,
-                doctorName: doctorName,
-                hospitalName: hospitalName,
+                doctorName,
+                hospitalName,
                 patientName: schedule.patientName,
                 surgeryType: schedule.surgeryType,
                 day: schedule.day,
@@ -486,8 +468,8 @@ const getTotalPaymentSummary = async (req, res) => {
                 endDateTime: moment(schedule.endDateTime).format('D MMM, YYYY h:mm A'),
                 status: schedule.status,
                 paymentAmount: schedule.paymentAmount,
-                paymentStatus: paymentStatus,
-                amountReceived: schedule.amountReceived,
+                paymentStatus,
+                amountReceived: schedule.amountReceived || 0,
                 dueAmount: dueAmount > 0 ? dueAmount : 0,
                 paymentMethod: schedule.paymentMethod || 'N/A',
                 documentProofNo: schedule.documentProofNo || 'N/A',
@@ -495,78 +477,58 @@ const getTotalPaymentSummary = async (req, res) => {
             };
         });
 
-        // Return the total payment summary
+        // Send the response
         res.status(200).json({
-            message: `Total payment summary fetched successfully for ${user.fullName}`,
+            message: `Schedules fetched successfully for ${req.user.fullName}`,
             totalPaymentSummary: {
-                totalAmountReceived: totalAmountReceived,
-                totalDueAmount: totalDueAmount,
-                totalPayment: totalPayment,
+                totalAmountReceived,
+                totalDueAmount,
+                totalPayment
             },
             schedules: formattedSchedules,
         });
     } catch (error) {
-        console.error('Error fetching total payment summary:', error.message);
+        console.error('Error fetching payment summary:', error.message);
         res.status(500).json({ message: 'Internal server error', error: error.message });
     }
 };
 
-// Get total payment summary by userId and date range
+
+// Get total payment summary for all users by date range
 const getTotalPaymentSummaryByDate = async (req, res) => {
     try {
-        const { userId } = req.params; // Extract userId from URL parameters
         const { startDate, endDate } = req.query; // Extract date range from query parameters
-
-        // Find the user by userId
-        const user = await User.findById(userId);
-        if (!user) {
-            return res.status(404).json({ message: 'User not found!' });
-        }
 
         // Validate date inputs
         if (!startDate || !endDate) {
             return res.status(400).json({ message: 'Please provide both startDate and endDate.' });
         }
 
-        // Parse dates
+        // Parse and format dates
         const start = new Date(startDate);
         const end = new Date(endDate);
         end.setHours(23, 59, 59, 999); // Include the end of the day
 
-        // Initialize variables to store total payments
         let totalAmountReceived = 0;
         let totalDueAmount = 0;
         let totalPayment = 0;
 
-        // Find schedules within the date range based on user role
-        let schedules;
-        if (user.role === 'Doctor') {
-            schedules = await Schedule.find({
-                doctor: userId,
-                startDateTime: { $gte: start, $lte: end },
-            })
-                .populate('doctor', 'fullName')
-                .populate('hospital', 'hospitalName');
-        } else {
-            schedules = await Schedule.find({
-                patientName: user.name,
-                startDateTime: { $gte: start, $lte: end },
-            })
-                .populate('doctor', 'fullName')
-                .populate('hospital', 'hospitalName');
-        }
+        // Fetch schedules within the date range
+        const schedules = await Schedule.find({
+            startDateTime: { $gte: start, $lte: end },
+        })
+            .populate('doctor', 'fullName')
+            .populate('hospital', 'hospitalName');
 
-        // If no schedules are found
         if (schedules.length === 0) {
-            return res.status(404).json({ message: 'No schedules found for this user in the given date range.' });
+            return res.status(404).json({ message: 'No schedules found in the given date range.' });
         }
 
-        // Format schedules response and calculate total amounts
+        // Format schedules and calculate totals
         const formattedSchedules = schedules.map(schedule => {
-            const doctorName = schedule.doctor ? schedule.doctor.fullName : 'No doctor assigned';
-            const hospitalName = schedule.hospital ? schedule.hospital.hospitalName : 'No hospital assigned';
+            const doctorName = schedule.doctor?.fullName || 'No doctor assigned';
+            const hospitalName = schedule.hospital?.hospitalName || 'No hospital assigned';
 
-            // Calculate due amount
             const dueAmount = schedule.paymentAmount - (schedule.amountReceived || 0);
             const paymentStatus = dueAmount <= 0 ? 'Done' : 'Pending';
 
@@ -577,8 +539,8 @@ const getTotalPaymentSummaryByDate = async (req, res) => {
 
             return {
                 _id: schedule._id,
-                doctorName: doctorName,
-                hospitalName: hospitalName,
+                doctorName,
+                hospitalName,
                 patientName: schedule.patientName,
                 surgeryType: schedule.surgeryType,
                 day: schedule.day,
@@ -586,7 +548,7 @@ const getTotalPaymentSummaryByDate = async (req, res) => {
                 endDateTime: moment(schedule.endDateTime).format('D MMM, YYYY h:mm A'),
                 status: schedule.status,
                 paymentAmount: schedule.paymentAmount,
-                paymentStatus: paymentStatus,
+                paymentStatus,
                 amountReceived: schedule.amountReceived,
                 dueAmount: dueAmount > 0 ? dueAmount : 0,
                 paymentMethod: schedule.paymentMethod || 'N/A',
@@ -595,13 +557,12 @@ const getTotalPaymentSummaryByDate = async (req, res) => {
             };
         });
 
-        // Return the total payment summary by date
         res.status(200).json({
-            message: `Total payment summary fetched successfully for ${user.fullName} between ${startDate} and ${endDate}`,
+            message: `Total payment summary fetched successfully for all users between ${startDate} and ${endDate}`,
             totalPaymentSummary: {
-                totalAmountReceived: totalAmountReceived,
-                totalDueAmount: totalDueAmount,
-                totalPayment: totalPayment,
+                totalAmountReceived,
+                totalDueAmount,
+                totalPayment,
             },
             schedules: formattedSchedules,
         });

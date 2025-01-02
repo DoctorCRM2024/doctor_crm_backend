@@ -887,10 +887,9 @@ exports.exportSchedulesToExcel = async (req, res) => {
 };
 
 
-// Fetch all schedules by userId (Doctor or Patient)
 exports.getSchedulesByUserId = async (req, res) => {
     try {
-        const { userId } = req.params;  // Extract userId from URL parameters
+        const { userId } = req.params;
 
         // Find the user by userId
         const user = await User.findById(userId);
@@ -898,32 +897,35 @@ exports.getSchedulesByUserId = async (req, res) => {
             return res.status(404).json({ message: 'User not found!' });
         }
 
-        // Determine whether the user is a doctor or a patient
         let schedules;
+        let totalAmountReceived = 0;
+        let totalDueAmount = 0;
+        let totalPayment = 0;
+
         if (user.role === 'Doctor') {
-            // If the user is a doctor, fetch all schedules where the doctor is assigned
             schedules = await Schedule.find({ doctor: userId })
-                .populate('doctor', 'fullName')  // Populate doctor's fullName
-                .populate('hospital', 'hospitalName');  // Populate hospital's hospitalName
+                .populate('doctor', 'fullName')
+                .populate('hospital', 'hospitalName');
         } else {
-            // If the user is a patient, fetch all schedules where the patient is assigned
             schedules = await Schedule.find({ patientName: user.name })
-                .populate('doctor', 'fullName')  // Populate doctor's fullName
-                .populate('hospital', 'hospitalName');  // Populate hospital's hospitalName
+                .populate('doctor', 'fullName')
+                .populate('hospital', 'hospitalName');
         }
 
-        // If no schedules are found
         if (schedules.length === 0) {
             return res.status(404).json({ message: 'No schedules found for this user.' });
         }
 
-        // Format the schedules response
         const formattedSchedules = schedules.map(schedule => {
             const doctorName = schedule.doctor ? schedule.doctor.fullName : 'No doctor assigned';
             const hospitalName = schedule.hospital ? schedule.hospital.hospitalName : 'No hospital assigned';
 
             const dueAmount = schedule.paymentAmount - (schedule.amountReceived || 0);
             const paymentStatus = dueAmount <= 0 ? 'Done' : 'Pending';
+
+            totalAmountReceived += schedule.amountReceived || 0;
+            totalDueAmount += dueAmount;
+            totalPayment += schedule.paymentAmount;
 
             return {
                 _id: schedule._id,
@@ -946,7 +948,12 @@ exports.getSchedulesByUserId = async (req, res) => {
         });
 
         res.status(200).json({
-            message: `Schedules fetched successfully for ${user.name}`,
+            message: `Schedules fetched successfully for ${user.fullName}`,
+            totalPaymentSummary: {
+                totalAmountReceived,
+                totalDueAmount,
+                totalPayment,
+            },
             schedules: formattedSchedules,
         });
     } catch (error) {
@@ -954,3 +961,4 @@ exports.getSchedulesByUserId = async (req, res) => {
         res.status(500).json({ message: 'Internal server error', error: error.message });
     }
 };
+
