@@ -99,7 +99,7 @@ exports.createSchedule = async (req, res) => {
 exports.updateSchedule = async (req, res) => {
     try {
         const { scheduleId } = req.params; // The scheduleId from the URL parameter
-        const { doctorId, hospitalName, patientName, surgeryType, startDateTime, endDateTime, day } = req.body;
+        const { doctorId, hospitalName, patientName, surgeryType, startDateTime, endDateTime, day, paymentAmount, paymentStatus, paymentMethod, documentProofNo, googleEventId } = req.body;
 
         // Validate the start and end date/times
         if (!startDateTime || !endDateTime) {
@@ -153,7 +153,11 @@ exports.updateSchedule = async (req, res) => {
         schedule.day = derivedDay;
         schedule.startDateTime = startDate;
         schedule.endDateTime = endDate;
-        // schedule.status = 'Updated'; // Update status
+        schedule.paymentAmount = paymentAmount || schedule.paymentAmount; // Update paymentAmount
+        schedule.paymentStatus = paymentStatus || schedule.paymentStatus; // Update paymentStatus
+        schedule.paymentMethod = paymentMethod || schedule.paymentMethod; // Update paymentMethod
+        schedule.documentProofNo = documentProofNo || schedule.documentProofNo; // Update documentProofNo
+        schedule.googleEventId = googleEventId || schedule.googleEventId; // Update documentProofNo
 
         // Save the updated schedule
         const updatedSchedule = await schedule.save();
@@ -174,6 +178,11 @@ exports.updateSchedule = async (req, res) => {
             startDateTime: moment(populatedSchedule.startDateTime).format('D MMM, YYYY h:mm A'), // Format date
             endDateTime: moment(populatedSchedule.endDateTime).format('D MMM, YYYY h:mm A'), // Format date
             status: populatedSchedule.status,
+            paymentAmount: populatedSchedule.paymentAmount,
+            paymentStatus: populatedSchedule.paymentStatus,
+            paymentMethod: populatedSchedule.paymentMethod,
+            documentProofNo: populatedSchedule.documentProofNo,
+            googleEventId: populatedSchedule.googleEventId,
         };
 
         res.status(200).json({
@@ -185,6 +194,7 @@ exports.updateSchedule = async (req, res) => {
         res.status(500).json({ message: 'Internal server error', error: error.message });
     }
 };
+
 
 // Delete Schedule
 exports.deleteSchedule = async (req, res) => {
