@@ -426,19 +426,40 @@ const getHospitalDoneSchedules = async (req, res) => {
     }
 };
 
+
 const getTotalPaymentSummary = async (req, res) => {
     try {
-        const userId = req.user._id; // Get user ID from the authenticated user
+        const userId = req.user._id; // Make sure the field is '_id' or 'id' based on token
+        const userRole = req.user.role;
+
+        console.log('User ID:', userId); // Log the user ID to verify it's set correctly
+        console.log('User Role:', userRole); // Log the user role
+
         let totalAmountReceived = 0;
         let totalDueAmount = 0;
         let totalPayment = 0;
 
-        // Fetch schedules for the user (doctor or patient)
-        const schedules = await Schedule.find({
-            $or: [{ doctor: userId }, { patientId: userId }]
-        })
+        let schedules;
+
+        // Check user role and modify the query accordingly
+        if (userRole === 'Admin') {
+            // Admin can see all schedules (doctor and patient)
+            schedules = await Schedule.find({
+                $or: [{ doctor: userId }, { patientId: userId }]
+            })
             .populate('doctor', 'fullName')
             .populate('hospital', 'hospitalName');
+        } else if (userRole === 'Doctor') {
+            // Doctor can only see their own schedules (doctor)
+            schedules = await Schedule.find({ doctor: userId })
+            .populate('doctor', 'fullName')
+            .populate('hospital', 'hospitalName');
+        } else {
+            return res.status(403).json({ message: "Access denied. Only Admin and Doctor roles are allowed." });
+        }
+
+        // Log the schedules to verify if they are fetched
+        console.log('Schedules:', schedules);
 
         if (schedules.length === 0) {
             return res.status(404).json({ message: 'No schedules found for the user.' });
@@ -477,7 +498,7 @@ const getTotalPaymentSummary = async (req, res) => {
             };
         });
 
-        // Send the response
+        // Send the response with the formatted data
         res.status(200).json({
             message: `Schedules fetched successfully for ${req.user.fullName}`,
             totalPaymentSummary: {
@@ -492,6 +513,7 @@ const getTotalPaymentSummary = async (req, res) => {
         res.status(500).json({ message: 'Internal server error', error: error.message });
     }
 };
+
 
 
 // Get total payment summary for all users by date range
