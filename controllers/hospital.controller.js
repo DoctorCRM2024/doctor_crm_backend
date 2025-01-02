@@ -497,7 +497,7 @@ const getTotalPaymentSummary = async (req, res) => {
 
         // Return the total payment summary
         res.status(200).json({
-            message: `Total payment summary fetched successfully for ${user.name}`,
+            message: `Total payment summary fetched successfully for ${user.fullName}`,
             totalPaymentSummary: {
                 totalAmountReceived: totalAmountReceived,
                 totalDueAmount: totalDueAmount,
@@ -597,7 +597,7 @@ const getTotalPaymentSummaryByDate = async (req, res) => {
 
         // Return the total payment summary by date
         res.status(200).json({
-            message: `Total payment summary fetched successfully for ${user.name} between ${startDate} and ${endDate}`,
+            message: `Total payment summary fetched successfully for ${user.fullName} between ${startDate} and ${endDate}`,
             totalPaymentSummary: {
                 totalAmountReceived: totalAmountReceived,
                 totalDueAmount: totalDueAmount,
