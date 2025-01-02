@@ -6,7 +6,7 @@ const ExcelJS= require('exceljs');
 
 exports.createSchedule = async (req, res) => {
     try {
-        const { doctorId, hospitalName, patientName, surgeryType, startDateTime, endDateTime, day, paymentAmount, paymentStatus } = req.body;
+        const { doctorId, hospitalName, patientName, surgeryType, startDateTime, endDateTime, day, paymentAmount, paymentStatus, googleEventId  } = req.body;
 
         // Validate the start and end date/times
         if (!startDateTime || !endDateTime) {
@@ -57,7 +57,8 @@ exports.createSchedule = async (req, res) => {
             endDateTime: endDate,
             status: 'Upcoming', // Default status
             paymentAmount,
-            paymentStatus
+            paymentStatus,
+            googleEventId 
         });
 
         // Save the schedule
@@ -81,6 +82,7 @@ exports.createSchedule = async (req, res) => {
             status: populatedSchedule.status,
             paymentAmount: populatedSchedule.paymentAmount,
             paymentStatus: populatedSchedule.paymentStatus,
+            googleEventId : populatedSchedule.googleEventId ,
         };
 
         res.status(201).json({
@@ -244,6 +246,7 @@ exports.getAllSchedules = async (req, res) => {
                 dueAmount: dueAmount > 0 ? dueAmount : 0, // Ensure due amount is not negative
                 paymentMethod: schedule.paymentMethod || 'N/A', // Fallback to 'N/A' if not present
                 documentProofNo: schedule.documentProofNo || 'N/A', // Fallback to 'N/A' if not present
+                googleEventId : schedule.googleEventId  || 'N/A', 
             };
         });
 
@@ -799,8 +802,6 @@ exports.updatePaymentDetails = async (req, res) => {
         res.status(500).json({ message: 'Internal server error', error: error.message });
     }
 };
-
-
 
 
 exports.exportSchedulesToExcel = async (req, res) => {

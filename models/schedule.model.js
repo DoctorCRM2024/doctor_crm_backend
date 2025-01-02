@@ -54,6 +54,9 @@ const scheduleSchema = new mongoose.Schema(
     documentProofNo: {
       type: String,
       // required: true
+    },
+    googleEventId: {
+      type: String
     }
 
   },
