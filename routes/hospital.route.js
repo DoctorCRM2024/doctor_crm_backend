@@ -1,6 +1,6 @@
 const express= require('express');
 const router= express.Router();
-const { addHospital, updateHospital, deleteHospital, getAllHospitals, getHospitalDoneSchedules, exportHospitalsToExcel }= require('../controllers/hospital.controller');
+const { addHospital, updateHospital, deleteHospital, getAllHospitals, getHospitalDoneSchedules, exportHospitalsToExcel, getTotalPaymentSummary }= require('../controllers/hospital.controller');
 const authenticateToken= require('../middleware/auth.middleware');
 
 router.post('/add', authenticateToken, addHospital);
@@ -11,6 +11,8 @@ router.get('/', authenticateToken, getAllHospitals);
 router.get('/done-schedules',authenticateToken, getHospitalDoneSchedules);
 
 router.get('/export', exportHospitalsToExcel);  // exporting hospitals to excel
+
+router.get('/total-payment/:userId',authenticateToken, getTotalPaymentSummary)
 
 
 module.exports= router;

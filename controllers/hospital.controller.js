@@ -1,4 +1,7 @@
 const Hospital = require('../models/hospital.model'); 
+const User= require('../models/user.model');
+const moment= require('moment')
+const Schedule= require('../models/schedule.model')
 const ExcelJS= require('exceljs');
 
 // Add a new hospital
@@ -423,8 +426,90 @@ const getHospitalDoneSchedules = async (req, res) => {
     }
 };
 
+// Get total payment summary by userId (Doctor or Patient)
+const getTotalPaymentSummary = async (req, res) => {
+    try {
+        const { userId } = req.params; // Extract userId from URL parameters
 
+        // Find the user by userId
+        const user = await User.findById(userId);
+        if (!user) {
+            return res.status(404).json({ message: 'User not found!' });
+        }
 
+        // Initialize a variable to store the total payment
+        let totalAmountReceived = 0;
+        let totalDueAmount = 0;
+        let totalPayment = 0;
+
+        // Find the schedules based on whether the user is a doctor or a patient
+        let schedules;
+        if (user.role === 'Doctor') {
+            // If the user is a doctor, fetch all schedules where the doctor is assigned
+            schedules = await Schedule.find({ doctor: userId })
+                .populate('doctor', 'fullName')  // Populate doctor's fullName
+                .populate('hospital', 'hospitalName');  // Populate hospital's hospitalName
+        } else {
+            // If the user is a patient, fetch all schedules where the patient is assigned
+            schedules = await Schedule.find({ patientName: user.name })
+                .populate('doctor', 'fullName')  // Populate doctor's fullName
+                .populate('hospital', 'hospitalName');  // Populate hospital's hospitalName
+        }
+
+        // If no schedules are found
+        if (schedules.length === 0) {
+            return res.status(404).json({ message: 'No schedules found for this user.' });
+        }
+
+        // Format the schedules response and calculate total amounts
+        const formattedSchedules = schedules.map(schedule => {
+            const doctorName = schedule.doctor ? schedule.doctor.fullName : 'No doctor assigned';
+            const hospitalName = schedule.hospital ? schedule.hospital.hospitalName : 'No hospital assigned';
+
+            // Calculate due amount
+            const dueAmount = schedule.paymentAmount - (schedule.amountReceived || 0);
+            const paymentStatus = dueAmount <= 0 ? 'Done' : 'Pending';
+
+            // Accumulate total amounts
+            totalAmountReceived += schedule.amountReceived || 0;
+            totalDueAmount += dueAmount;
+            totalPayment += schedule.paymentAmount;
+
+            return {
+                _id: schedule._id,
+                doctorName: doctorName,
+                hospitalName: hospitalName,
+                patientName: schedule.patientName,
+                surgeryType: schedule.surgeryType,
+                day: schedule.day,
+                startDateTime: moment(schedule.startDateTime).format('D MMM, YYYY h:mm A'),
+                endDateTime: moment(schedule.endDateTime).format('D MMM, YYYY h:mm A'),
+                status: schedule.status,
+                paymentAmount: schedule.paymentAmount,
+                paymentStatus: paymentStatus,
+                amountReceived: schedule.amountReceived,
+                dueAmount: dueAmount > 0 ? dueAmount : 0,
+                paymentMethod: schedule.paymentMethod || 'N/A',
+                documentProofNo: schedule.documentProofNo || 'N/A',
+                googleEventId: schedule.googleEventId || 'N/A',
+            };
+        });
+
+        // Return the total payment summary
+        res.status(200).json({
+            message: `Total payment summary fetched successfully for ${user.name}`,
+            totalPaymentSummary: {
+                totalAmountReceived: totalAmountReceived,
+                totalDueAmount: totalDueAmount,
+                totalPayment: totalPayment,
+            },
+            schedules: formattedSchedules,
+        });
+    } catch (error) {
+        console.error('Error fetching total payment summary:', error.message);
+        res.status(500).json({ message: 'Internal server error', error: error.message });
+    }
+};
 
 
 module.exports = {
@@ -434,4 +519,5 @@ module.exports = {
     getAllHospitals,
     getHospitalDoneSchedules,
     exportHospitalsToExcel,
+    getTotalPaymentSummary
 };
