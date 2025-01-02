@@ -511,6 +511,107 @@ const getTotalPaymentSummary = async (req, res) => {
     }
 };
 
+// Get total payment summary by userId and date range
+const getTotalPaymentSummaryByDate = async (req, res) => {
+    try {
+        const { userId } = req.params; // Extract userId from URL parameters
+        const { startDate, endDate } = req.query; // Extract date range from query parameters
+
+        // Find the user by userId
+        const user = await User.findById(userId);
+        if (!user) {
+            return res.status(404).json({ message: 'User not found!' });
+        }
+
+        // Validate date inputs
+        if (!startDate || !endDate) {
+            return res.status(400).json({ message: 'Please provide both startDate and endDate.' });
+        }
+
+        // Parse dates
+        const start = new Date(startDate);
+        const end = new Date(endDate);
+        end.setHours(23, 59, 59, 999); // Include the end of the day
+
+        // Initialize variables to store total payments
+        let totalAmountReceived = 0;
+        let totalDueAmount = 0;
+        let totalPayment = 0;
+
+        // Find schedules within the date range based on user role
+        let schedules;
+        if (user.role === 'Doctor') {
+            schedules = await Schedule.find({
+                doctor: userId,
+                startDateTime: { $gte: start, $lte: end },
+            })
+                .populate('doctor', 'fullName')
+                .populate('hospital', 'hospitalName');
+        } else {
+            schedules = await Schedule.find({
+                patientName: user.name,
+                startDateTime: { $gte: start, $lte: end },
+            })
+                .populate('doctor', 'fullName')
+                .populate('hospital', 'hospitalName');
+        }
+
+        // If no schedules are found
+        if (schedules.length === 0) {
+            return res.status(404).json({ message: 'No schedules found for this user in the given date range.' });
+        }
+
+        // Format schedules response and calculate total amounts
+        const formattedSchedules = schedules.map(schedule => {
+            const doctorName = schedule.doctor ? schedule.doctor.fullName : 'No doctor assigned';
+            const hospitalName = schedule.hospital ? schedule.hospital.hospitalName : 'No hospital assigned';
+
+            // Calculate due amount
+            const dueAmount = schedule.paymentAmount - (schedule.amountReceived || 0);
+            const paymentStatus = dueAmount <= 0 ? 'Done' : 'Pending';
+
+            // Accumulate total amounts
+            totalAmountReceived += schedule.amountReceived || 0;
+            totalDueAmount += dueAmount;
+            totalPayment += schedule.paymentAmount;
+
+            return {
+                _id: schedule._id,
+                doctorName: doctorName,
+                hospitalName: hospitalName,
+                patientName: schedule.patientName,
+                surgeryType: schedule.surgeryType,
+                day: schedule.day,
+                startDateTime: moment(schedule.startDateTime).format('D MMM, YYYY h:mm A'),
+                endDateTime: moment(schedule.endDateTime).format('D MMM, YYYY h:mm A'),
+                status: schedule.status,
+                paymentAmount: schedule.paymentAmount,
+                paymentStatus: paymentStatus,
+                amountReceived: schedule.amountReceived,
+                dueAmount: dueAmount > 0 ? dueAmount : 0,
+                paymentMethod: schedule.paymentMethod || 'N/A',
+                documentProofNo: schedule.documentProofNo || 'N/A',
+                googleEventId: schedule.googleEventId || 'N/A',
+            };
+        });
+
+        // Return the total payment summary by date
+        res.status(200).json({
+            message: `Total payment summary fetched successfully for ${user.name} between ${startDate} and ${endDate}`,
+            totalPaymentSummary: {
+                totalAmountReceived: totalAmountReceived,
+                totalDueAmount: totalDueAmount,
+                totalPayment: totalPayment,
+            },
+            schedules: formattedSchedules,
+        });
+    } catch (error) {
+        console.error('Error fetching total payment summary by date:', error.message);
+        res.status(500).json({ message: 'Internal server error', error: error.message });
+    }
+};
+
+
 
 module.exports = {
     addHospital,
@@ -519,5 +620,6 @@ module.exports = {
     getAllHospitals,
     getHospitalDoneSchedules,
     exportHospitalsToExcel,
-    getTotalPaymentSummary
+    getTotalPaymentSummary,
+    getTotalPaymentSummaryByDate
 };
