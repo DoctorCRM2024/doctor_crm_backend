@@ -9,62 +9,6 @@ const moment = require('moment');
 require('dotenv').config();
 
 
-// const login = async (req, res) => {
-//     try {
-//         const { emailId, password } = req.body;
-
-//         if (!emailId || !password) {
-//             return res.status(400).json({ message: 'Email and Password are required' });
-//         }
-
-//         const userExist = await User.findOne({ emailId });
-//         if (!userExist) {
-//             return res.status(401).json({ message: 'Invalid credentials' });
-//         }
-
-//         const isMatch = await bcrypt.compare(password, userExist.password);
-//         if (!isMatch) {
-//             return res.status(401).json({ message: 'Invalid credentials' });
-//         }
-
-//         if (!process.env.JWT_SECRET || !process.env.JWT_REFRESH_SECRET) {
-//             console.error('JWT secrets are not defined');
-//             return res.status(500).json({ message: 'Server configuration error' });
-//         }
-
-//         // Generate tokens with role included in the payload
-//         const accessToken = jwt.sign(
-//             { id: userExist._id, role: userExist.role }, // Add role to token payload
-//             process.env.JWT_SECRET, 
-//             { expiresIn: '30m' }
-//         );
-//         const refreshToken = jwt.sign(
-//             { id: userExist._id, role: userExist.role }, // Add role to refresh token as well
-//             process.env.JWT_REFRESH_SECRET, 
-//             { expiresIn: '7d' }
-//         );
-
-//         // Save refreshToken to the database without full validation
-//         await User.updateOne({ _id: userExist._id }, { refreshToken });
-
-//         // Respond with user details and tokens
-//         res.status(200).json({
-//             message: 'User signed in successfully',
-//             accessToken,
-//             refreshToken,
-//             user: {
-//                 fullName: userExist.fullName,
-//                 emailId: userExist.emailId,
-//                 role: userExist.role,
-//                 photo: userExist.photo  // Send photo along with other user details
-//             }
-//         });
-//     } catch (error) {
-//         console.error('Error during login:', error.message);
-//         res.status(500).json({ message: 'Internal server error' });
-//     }
-// };
-
 const login = async (req, res) => {
     try {
         const { emailId, password } = req.body;
@@ -121,6 +65,7 @@ const login = async (req, res) => {
             accessToken,
             refreshToken,
             user: {
+                userId: userExist._id, // Include userId in the response
                 fullName: userExist.fullName,
                 emailId: userExist.emailId,
                 role: userExist.role,
@@ -133,7 +78,6 @@ const login = async (req, res) => {
         res.status(500).json({ message: 'Internal server error' });
     }
 };
-
 
 
 // Refresh Token Endpoint
