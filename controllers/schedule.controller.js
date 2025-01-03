@@ -3,6 +3,7 @@ const Hospital = require('../models/hospital.model');
 const Schedule = require('../models/schedule.model');
 const moment = require('moment');
 const ExcelJS= require('exceljs');
+const { query } = require('express');
 
 exports.createSchedule = async (req, res) => {
     try {
@@ -243,6 +244,7 @@ exports.getAllSchedules = async (req, res) => {
 
             return {
                 _id: schedule._id,
+                doctorId: schedule.doctorId,
                 doctorName: doctorName,
                 hospitalName: hospitalName,
                 patientName: schedule.patientName,
@@ -371,7 +373,13 @@ exports.transferAppointment = async (req, res) => {
 exports.getUpcomingSchedules = async (req, res) => {
     try {
         // Retrieve all schedules with status 'Upcoming' and populate fields
-        const schedules = await Schedule.find({ status: 'Upcoming' })
+        let query = {status: 'Upcoming' };
+        // Check user role and adjust query
+        if (req.user.role === 'Doctor') {
+            query = { doctor: req.user.id, status: 'Upcoming' }; // Filter schedules for the logged-in doctor
+        }        
+        
+        const schedules = await Schedule.find(query)
             .populate('doctor', 'fullName') // Populate doctor's fullName (was 'name', now 'fullName')
             .populate('hospital', 'hospitalName'); // Populate hospital's name
 
@@ -401,8 +409,13 @@ exports.getUpcomingSchedules = async (req, res) => {
 // Retrieve all done schedules
 exports.getDoneSchedules = async (req, res) => {
     try {
-        // Retrieve all schedules with status 'Done' and populate fields
-        const schedules = await Schedule.find({ status: 'Done' })
+        let query = { status: 'Done' };
+        // Check user role and adjust query
+        if (req.user.role === 'Doctor') {
+            query = { doctor: req.user.id, status: 'Done' }; // Filter schedules for the logged-in doctor
+        }
+        
+        const schedules = await Schedule.find(query)
             .populate('doctor', 'fullName') // Populate doctor's fullName (was 'name', now 'fullName')
             .populate('hospital', 'hospitalName'); // Populate hospital's name
 
@@ -432,8 +445,13 @@ exports.getDoneSchedules = async (req, res) => {
 // Retrieve transferred appointments (appointments that have been transferred)
 exports.getTransferredAppointments = async (req, res) => {
     try {
+        let query = { isTransferred: true };
+        // Check user role and adjust query
+        if (req.user.role === 'Doctor', isTransferred === true ) {
+            query = { doctor: req.user.id }; // Filter schedules for the logged-in doctor
+        }
         // Fetch schedules that have been transferred (isTransferred = true)
-        const transferredSchedules = await Schedule.find({ isTransferred: true })
+        const transferredSchedules = await Schedule.find(query)
             .populate('doctor', 'fullName') // Populate doctor's full name
             .populate('hospital', 'hospitalName'); // Populate hospital's name
 
@@ -547,7 +565,6 @@ exports.retakeTransferredAppointment = async (req, res) => {
 // Fetch Schedules within a date range
 exports.getSchedulesByDateRange = async (req, res) => {
     try {
-        // Extract start and end dates from query parameters
         const { startDate, endDate } = req.query;
 
         // Validate the start and end dates
@@ -555,38 +572,44 @@ exports.getSchedulesByDateRange = async (req, res) => {
             return res.status(400).json({ message: 'Start date and End date are required.' });
         }
 
-        // Parse the provided startDate and endDate using moment.js in 'YYYY-MM-DD' format
-        const start = moment.utc(startDate, 'YYYY-MM-DD'); // Use UTC to handle any time zone issues
-        const end = moment.utc(endDate, 'YYYY-MM-DD'); // Use UTC to handle any time zone issues
+        const start = moment.utc(startDate, 'YYYY-MM-DD');
+        const end = moment.utc(endDate, 'YYYY-MM-DD');
 
-        // Check if the parsed dates are valid
         if (!start.isValid() || !end.isValid()) {
             return res.status(400).json({ message: 'Invalid date format. Use "YYYY-MM-DD" format.' });
         }
 
-        console.log('Parsed Start Date:', start.format());  // Log for debugging
-        console.log('Parsed End Date:', end.format());      // Log for debugging
+        console.log('Parsed Start Date:', start.format());
+        console.log('Parsed End Date:', end.format());
 
-        // Fetch schedules that fall within the start and end date range, including overlapping ones
-        const schedules = await Schedule.find({
+        // Get user role from the request (assuming it's attached in the middleware or token)
+        const { role, doctorId } = req.user; // Ensure `req.user` is set with proper user info
+
+        // Build the query based on user role
+        const query = {
             $or: [
-                { startDateTime: { $gte: start.toDate(), $lte: end.toDate() } },  // Schedules starting within the range
-                { endDateTime: { $gte: start.toDate(), $lte: end.toDate() } },    // Schedules ending within the range
-                { startDateTime: { $lte: start.toDate() }, endDateTime: { $gte: end.toDate() } } // Schedules fully within the range
-            ]
-        })
-        .populate('doctor', 'fullName') // Populate doctor's full name
-        .populate('hospital', 'hospitalName'); // Populate hospital's name
+                { startDateTime: { $gte: start.toDate(), $lte: end.toDate() } },
+                { endDateTime: { $gte: start.toDate(), $lte: end.toDate() } },
+                { startDateTime: { $lte: start.toDate() }, endDateTime: { $gte: end.toDate() } },
+            ],
+        };
 
-        // If no schedules found within the range
+        // If user is a doctor, restrict schedules to their ID
+        if (role === 'doctor') {
+            query.doctor = doctorId;
+        }
+
+        const schedules = await Schedule.find(query)
+            .populate('doctor', 'fullName')
+            .populate('hospital', 'hospitalName');
+
         if (schedules.length === 0) {
             return res.status(404).json({ message: 'No schedules found within the specified date range.' });
         }
 
-        // Format the schedules response to match the required structure
         const formattedSchedules = schedules.map(schedule => ({
             _id: schedule._id,
-            doctorName: `Dr. ${schedule.doctor?.fullName || 'N/A'}`, // Prefix 'Dr.' to the doctor's name
+            doctorName: `Dr. ${schedule.doctor?.fullName || 'N/A'}`,
             hospitalName: schedule.hospital?.hospitalName || 'N/A',
             patientName: schedule.patientName,
             surgeryType: schedule.surgeryType,
@@ -594,12 +617,12 @@ exports.getSchedulesByDateRange = async (req, res) => {
             startDateTime: moment(schedule.startDateTime).format('D MMM, YYYY h:mm A'),
             endDateTime: moment(schedule.endDateTime).format('D MMM, YYYY h:mm A'),
             status: schedule.status,
-            paymentAmount: schedule.paymentAmount || 0,  // Assuming you have this field in the model
-            paymentStatus: schedule.paymentStatus || 'Pending', // Default to 'Pending' if not provided
-            amountReceived: schedule.amountReceived || 0, // Assuming you have this field in the model
-            dueAmount: (schedule.paymentAmount || 0) - (schedule.amountReceived || 0), // Calculate due amount
-            paymentMethod: schedule.paymentMethod || 'N/A', // Default to 'N/A' if not provided
-            documentProofNo: schedule.documentProofNo || 'N/A' // Default to 'N/A' if not provided
+            paymentAmount: schedule.paymentAmount || 0,
+            paymentStatus: schedule.paymentStatus || 'Pending',
+            amountReceived: schedule.amountReceived || 0,
+            dueAmount: (schedule.paymentAmount || 0) - (schedule.amountReceived || 0),
+            paymentMethod: schedule.paymentMethod || 'N/A',
+            documentProofNo: schedule.documentProofNo || 'N/A',
         }));
 
         res.status(200).json({
@@ -633,12 +656,19 @@ exports.getTransferredAppointmentsByDateRange = async (req, res) => {
             return res.status(400).json({ message: 'Invalid date format. Use "YYYY-MM-DD" format.' });
         }
 
-        // Fetch transferred appointments within the given date range
-        const transferredSchedules = await Schedule.find({
-            isTransferred: true,
+        const { role, doctorId } = req.user
+        
+        query = { isTransferred: true,
             startDateTime: { $gte: start.toDate() }, // Greater than or equal to start date
             endDateTime: { $lte: end.toDate() }, // Less than or equal to end date
-        })
+          };
+
+        if (role === 'doctor') {
+            query.doctor = doctorId;
+        } 
+
+        // Fetch transferred appointments within the given date range
+        const transferredSchedules = await Schedule.find(query)
             .populate('doctor', 'fullName') // Populate doctor's full name
             .populate('hospital', 'hospitalName'); // Populate hospital's name
 
@@ -819,7 +849,12 @@ exports.updatePaymentDetails = async (req, res) => {
 exports.exportSchedulesToExcel = async (req, res) => {
     try {
         // Fetch all schedules from the database and populate doctor and hospital
-        const schedules = await Schedule.find()
+        let query = {};
+        // Check user role and adjust query
+        if (req.user.role === 'Doctor') {
+            query = { doctor: req.user.id }; // Filter schedules for the logged-in doctor
+        }
+        const schedules = await Schedule.find(query)
             .populate('doctor', 'fullName') // Populate doctor's fullName
             .populate('hospital', 'hospitalName'); // Populate hospital's hospitalName
 
