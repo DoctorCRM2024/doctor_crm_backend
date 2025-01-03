@@ -361,6 +361,7 @@ exports.transferAppointment = async (req, res) => {
             paymentStatus: populatedSchedule.paymentStatus,
             amountReceived: populatedSchedule.amountReceived,
             paymentMethod: populatedSchedule.paymentMethod || 'N/A',
+            googleEventId: populatedSchedule.googleEventId || 'N/A',
         };
 
         res.status(200).json({
@@ -403,6 +404,7 @@ exports.getUpcomingSchedules = async (req, res) => {
             paymentStatus: schedule.paymentStatus,
             amountReceived: schedule.amountReceived,
             paymentMethod: schedule.paymentMethod || 'N/A',
+            googleEventId: schedule.googleEventId || 'N/A',
         }));
 
         res.status(200).json({
@@ -443,6 +445,7 @@ exports.getDoneSchedules = async (req, res) => {
             paymentStatus: schedule.paymentStatus,
             amountReceived: schedule.amountReceived,
             paymentMethod: schedule.paymentMethod || 'N/A',
+            googleEventId: schedule.googleEventId || 'N/A',
         }));
 
         res.status(200).json({
@@ -491,6 +494,8 @@ exports.getTransferredAppointments = async (req, res) => {
             paymentMethod: schedule.paymentMethod || 'N/A',
             paymentStatus: schedule.paymentStatus,
             amountReceived: schedule.amountReceived || 0,
+            isTransferred: schedule.isTransferred,
+            googleEventId: schedule.googleEventId || 'N/A',
         }));
 
         res.status(200).json({
@@ -574,6 +579,8 @@ exports.retakeTransferredAppointment = async (req, res) => {
             paymentMethod: populatedSchedule.paymentMethod || 'N/A',
             paymentStatus: populatedSchedule.paymentStatus,
             amountReceived: populatedSchedule.amountReceived || 0,
+            isTransferred: populatedSchedule.isTransferred,
+            googleEventId: populatedSchedule.googleEventId || 'N/A',
         };
 
         res.status(200).json({
@@ -654,6 +661,7 @@ exports.getSchedulesByDateRange = async (req, res) => {
             dueAmount: (schedule.paymentAmount || 0) - (schedule.amountReceived || 0),
             paymentMethod: schedule.paymentMethod || 'N/A',
             documentProofNo: schedule.documentProofNo || 'N/A',
+            googleEventId: schedule.googleEventId || 'N/A',
         }));
 
         res.status(200).json({
@@ -729,6 +737,7 @@ exports.getTransferredAppointmentsByDateRange = async (req, res) => {
             paymentStatus: schedule.paymentStatus || 'Pending',
             amountReceived: schedule.amountReceived || 0,
             paymentMethod: schedule.paymentMethod || 'N/A',
+            googleEventId: schedule.googleEventId || 'N/A',
         }));
 
         res.status(200).json({
@@ -874,6 +883,7 @@ exports.updatePaymentDetails = async (req, res) => {
             paymentMethod: updatedSchedule.paymentMethod,
             documentProofNo: updatedSchedule.documentProofNo,
             paymentStatus: updatedSchedule.paymentStatus,
+            googleEventId: updatedSchedule.googleEventId || 'N/A',
         };
 
         res.status(200).json({
@@ -948,6 +958,7 @@ exports.exportSchedulesToExcel = async (req, res) => {
                 dueAmount: dueAmount > 0 ? dueAmount : 0,
                 paymentMethod: schedule.paymentMethod || 'N/A',
                 documentProofNo: schedule.documentProofNo || 'N/A',
+                googleEventId: schedule.googleEventId || 'N/A',
             });
         });
 
