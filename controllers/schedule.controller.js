@@ -617,26 +617,21 @@ exports.getSchedulesByDateRange = async (req, res) => {
         const { role, doctorId } = req.user; // Ensure `req.user` is set with proper user info
 
         // Build the query based on user role
-        const query = {
-            $or: [
-                { startDateTime: { $gte: start.toDate(), $lte: end.toDate() } },
-                { endDateTime: { $gte: start.toDate(), $lte: end.toDate() } },
-                { startDateTime: { $lte: start.toDate() }, endDateTime: { $gte: end.toDate() } },
-            ],
-        };
-
+        console.log(req.user.role);
         // If user is a doctor, restrict schedules to their ID
+        let query = {};
         if (req.user.role === 'Doctor') {
-            const query = { $and: [{doctor: req.user.id},
-                {$or: [
-                    { startDateTime: { $gte: start.toDate(), $lte: end.toDate() } },
-                    { endDateTime: { $gte: start.toDate(), $lte: end.toDate() } },
-                    { startDateTime: { $lte: start.toDate() }, endDateTime: { $gte: end.toDate() } },
-                ]}]
+            console.log('Doctor ID:', req.user.id);
+            query = {
+                doctor: req.user.id, // Fetch only schedules assigned to the doctor
+                startDateTime: { $gte: start.toDate() },
+                endDateTime: { $lte: end.toDate() }
             };
             
         }
-
+        else {
+            query = { startDateTime: { $gte: start.toDate() }, endDateTime: { $lte: end.toDate() } };
+        }
         const schedules = await Schedule.find(query)
             .populate('doctor', 'fullName')
             .populate('hospital', 'hospitalName');
