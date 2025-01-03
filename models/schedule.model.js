@@ -37,7 +37,7 @@ const scheduleSchema = new mongoose.Schema(
       type: Date,
       required: true,
     },
-    paymentRemainderDate : {
+    paymentReminderDate : {
       type: Date,
       required: true,
     },
