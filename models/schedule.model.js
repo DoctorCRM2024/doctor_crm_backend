@@ -7,6 +7,11 @@ const scheduleSchema = new mongoose.Schema(
       ref: 'User',
       required: true,
     },
+    createdByDoctor: {
+      type: mongoose.Schema.Types.ObjectId, // Reference to the doctor who created the schedule
+      ref: 'User',
+      required: true, // If required, set to `true`. Otherwise, set to `false`.
+    },
     hospital: {
       type: mongoose.Schema.Types.ObjectId, // Reference to Hospital
       ref: 'Hospital',
