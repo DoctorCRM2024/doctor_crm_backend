@@ -122,7 +122,7 @@ exports.updateSchedule = async (req, res) => {
         // Convert to JavaScript Date objects for use in the Schedule model
         const startDate = start.toDate();
         const endDate = end.toDate();
-        const paymentRemainderDate = paymentRemainderDate.toDate();
+        const paymentReminderDate = paymentReminderDate.toDate();
 
         // Validate the derived day from startDateTime if it's not passed
         let derivedDay = day || start.toLocaleString('en-US', { weekday: 'long' }); // Use provided day or derive from startDateTime
@@ -158,7 +158,7 @@ exports.updateSchedule = async (req, res) => {
         schedule.day = derivedDay;
         schedule.startDateTime = startDate;
         schedule.endDateTime = endDate;
-        schedule.paymentRemainderDate = paymentRemainderDate;
+        schedule.paymentReminderDate = paymentReminderDate;
         schedule.paymentAmount = paymentAmount || schedule.paymentAmount; // Update paymentAmount
         schedule.paymentStatus = paymentStatus || schedule.paymentStatus; // Update paymentStatus
         schedule.paymentMethod = paymentMethod || schedule.paymentMethod; // Update paymentMethod
@@ -257,7 +257,7 @@ exports.getAllSchedules = async (req, res) => {
                 day: schedule.day,
                 startDateTime: moment(schedule.startDateTime).format('D MMM, YYYY h:mm A'),
                 endDateTime: moment(schedule.endDateTime).format('D MMM, YYYY h:mm A'),
-                paymentRemainderDate: moment(schedule.paymentRemainderDate).format('D MMM, YYYY h:mm A'),
+                paymentReminderDate: moment(schedule.paymentReminderDate).format('D MMM, YYYY h:mm A'),
                 status: schedule.status,
                 paymentAmount: schedule.paymentAmount,
                 paymentStatus: paymentStatus,
@@ -361,7 +361,7 @@ exports.transferAppointment = async (req, res) => {
             day: populatedSchedule.day, // Include day in response
             startDateTime: moment(populatedSchedule.startDateTime).format('D MMM, YYYY h:mm A'), // Format date
             endDateTime: moment(populatedSchedule.endDateTime).format('D MMM, YYYY h:mm A'), // Format date
-            paymentRemainderDate: moment(populatedSchedule.paymentRemainderDate).format('D MMM, YYYY h:mm A'), // Format date
+            paymentReminderDate: moment(populatedSchedule.paymentReminderDate).format('D MMM, YYYY h:mm A'), // Format date
             status: populatedSchedule.status,
             paymentAmount: populatedSchedule.paymentAmount,
             paymentStatus: populatedSchedule.paymentStatus,
