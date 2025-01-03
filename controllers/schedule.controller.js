@@ -357,6 +357,10 @@ exports.transferAppointment = async (req, res) => {
             startDateTime: moment(populatedSchedule.startDateTime).format('D MMM, YYYY h:mm A'), // Format date
             endDateTime: moment(populatedSchedule.endDateTime).format('D MMM, YYYY h:mm A'), // Format date
             status: populatedSchedule.status,
+            paymentAmount: populatedSchedule.paymentAmount,
+            paymentStatus: populatedSchedule.paymentStatus,
+            amountReceived: populatedSchedule.amountReceived,
+            paymentMethod: populatedSchedule.paymentMethod || 'N/A',
         };
 
         res.status(200).json({
@@ -395,6 +399,10 @@ exports.getUpcomingSchedules = async (req, res) => {
             date: schedule.date,
             time: schedule.time,
             status: schedule.status,
+            paymentAmount: schedule.paymentAmount,
+            paymentStatus: schedule.paymentStatus,
+            amountReceived: schedule.amountReceived,
+            paymentMethod: schedule.paymentMethod || 'N/A',
         }));
 
         res.status(200).json({
@@ -431,6 +439,10 @@ exports.getDoneSchedules = async (req, res) => {
             date: schedule.date,
             time: schedule.time,
             status: schedule.status,
+            paymentAmount: schedule.paymentAmount,
+            paymentStatus: schedule.paymentStatus,
+            amountReceived: schedule.amountReceived,
+            paymentMethod: schedule.paymentMethod || 'N/A',
         }));
 
         res.status(200).json({
@@ -466,6 +478,7 @@ exports.getTransferredAppointments = async (req, res) => {
         // Format the schedules response
         const formattedSchedules = transferredSchedules.map(schedule => ({
             _id: schedule._id,
+            doctorId: schedule.doctor.id,
             doctorName: schedule.doctor?.fullName || 'N/A',
             hospitalName: schedule.hospital?.hospitalName || 'N/A',
             patientName: schedule.patientName,
@@ -474,6 +487,10 @@ exports.getTransferredAppointments = async (req, res) => {
             startDateTime: moment(schedule.startDateTime).format('D MMM, YYYY h:mm A'),
             endDateTime: moment(schedule.endDateTime).format('D MMM, YYYY h:mm A'),
             status: schedule.status,
+            paymentAmount: schedule.paymentAmount || 0,
+            paymentMethod: schedule.paymentMethod || 'N/A',
+            paymentStatus: schedule.paymentStatus,
+            amountReceived: schedule.amountReceived || 0,
         }));
 
         res.status(200).json({
@@ -553,6 +570,10 @@ exports.retakeTransferredAppointment = async (req, res) => {
             startDateTime: moment(populatedSchedule.startDateTime).format('D MMM, YYYY h:mm A'),
             endDateTime: moment(populatedSchedule.endDateTime).format('D MMM, YYYY h:mm A'),
             status: populatedSchedule.status,
+            paymentAmount: populatedSchedule.paymentAmount || 0,
+            paymentMethod: populatedSchedule.paymentMethod || 'N/A',
+            paymentStatus: populatedSchedule.paymentStatus,
+            amountReceived: populatedSchedule.amountReceived || 0,
         };
 
         res.status(200).json({
@@ -703,6 +724,11 @@ exports.getTransferredAppointmentsByDateRange = async (req, res) => {
             startDateTime: moment(schedule.startDateTime).format('D MMM, YYYY h:mm A'),
             endDateTime: moment(schedule.endDateTime).format('D MMM, YYYY h:mm A'),
             status: schedule.status,
+            isTransferred: schedule.isTransferred,
+            paymentAmount: schedule.paymentAmount || 0,
+            paymentStatus: schedule.paymentStatus || 'Pending',
+            amountReceived: schedule.amountReceived || 0,
+            paymentMethod: schedule.paymentMethod || 'N/A',
         }));
 
         res.status(200).json({
