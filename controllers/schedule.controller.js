@@ -113,6 +113,7 @@ exports.updateSchedule = async (req, res) => {
         // Parse the provided startDateTime and endDateTime using moment.js
         const start = moment(startDateTime, 'D MMM, YYYY h:mm A');
         const end = moment(endDateTime, 'D MMM, YYYY h:mm A');
+        const paymentReminder = moment(paymentReminderDate, 'D MMM, YYYY h:mm A');
 
         // Check if the parsed date is valid
         if (!start.isValid() || !end.isValid()) {
@@ -122,7 +123,7 @@ exports.updateSchedule = async (req, res) => {
         // Convert to JavaScript Date objects for use in the Schedule model
         const startDate = start.toDate();
         const endDate = end.toDate();
-        const paymentReminderDate = paymentReminderDate.toDate();
+        const paymentReminderDate = paymentReminder.toDate();
 
         // Validate the derived day from startDateTime if it's not passed
         let derivedDay = day || start.toLocaleString('en-US', { weekday: 'long' }); // Use provided day or derive from startDateTime
