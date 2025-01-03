@@ -219,30 +219,31 @@ exports.deleteSchedule = async (req, res) => {
 // Retrieve all schedules
 exports.getAllSchedules = async (req, res) => {
     try {
-        // Fetch all schedules from the database and populate doctor and hospital
-        const schedules = await Schedule.find()
+        // Initialize query object
+        let query = {};
+        // Check user role and adjust query
+        if (req.user.role === 'Doctor') {
+            query = { doctor: req.user.id }; // Filter schedules for the logged-in doctor
+        }
+
+        // Fetch schedules based on role
+        const schedules = await Schedule.find(query)
             .populate('doctor', 'fullName') // Populate doctor's fullName
             .populate('hospital', 'hospitalName'); // Populate hospital's hospitalName
 
-        // If no schedules found
         if (schedules.length === 0) {
             return res.status(404).json({ message: 'No schedules found.' });
         }
 
-        // Format the schedules response
         const formattedSchedules = schedules.map(schedule => {
-            // Ensure doctor and hospital are populated correctly
             const doctorName = schedule.doctor ? schedule.doctor.fullName : 'No doctor assigned';
             const hospitalName = schedule.hospital ? schedule.hospital.hospitalName : 'No hospital assigned';
-
-            // Calculate the due amount
             const dueAmount = schedule.paymentAmount - (schedule.amountReceived || 0);
             const paymentStatus = dueAmount <= 0 ? 'Done' : 'Pending';
 
-            // Return the formatted schedule with the additional fields
             return {
                 _id: schedule._id,
-                doctorName: doctorName, // Include doctor name in response
+                doctorName: doctorName,
                 hospitalName: hospitalName,
                 patientName: schedule.patientName,
                 surgeryType: schedule.surgeryType,
@@ -253,10 +254,10 @@ exports.getAllSchedules = async (req, res) => {
                 paymentAmount: schedule.paymentAmount,
                 paymentStatus: paymentStatus,
                 amountReceived: schedule.amountReceived,
-                dueAmount: dueAmount > 0 ? dueAmount : 0, // Ensure due amount is not negative
-                paymentMethod: schedule.paymentMethod || 'N/A', // Fallback to 'N/A' if not present
-                documentProofNo: schedule.documentProofNo || 'N/A', // Fallback to 'N/A' if not present
-                googleEventId : schedule.googleEventId  || 'N/A', 
+                dueAmount: dueAmount > 0 ? dueAmount : 0,
+                paymentMethod: schedule.paymentMethod || 'N/A',
+                documentProofNo: schedule.documentProofNo || 'N/A',
+                googleEventId: schedule.googleEventId || 'N/A',
             };
         });
 
@@ -269,6 +270,7 @@ exports.getAllSchedules = async (req, res) => {
         res.status(500).json({ message: 'Internal server error', error: error.message });
     }
 };
+
 
 
 // Update the status 
