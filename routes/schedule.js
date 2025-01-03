@@ -4,7 +4,10 @@ const authenticateToken= require('../middleware/auth.middleware');
 const { createSchedule, updateSchedule, deleteSchedule, getAllSchedules, 
       toggleScheduleStatus, transferAppointment, getUpcomingSchedules, 
       getDoneSchedules, getTransferredAppointments, retakeTransferredAppointment, 
-      getSchedulesByDateRange, getTransferredAppointmentsByDateRange, updatePaymentDetails, exportSchedulesToExcel , getSchedulesByUserId} = require('../controllers/schedule.controller');
+      getSchedulesByDateRange, getTransferredAppointmentsByDateRange, updatePaymentDetails, 
+      exportSchedulesToExcel , getSchedulesByUserId,
+      getDueSchedules, updateSchedulePaymentStatus,
+      } = require('../controllers/schedule.controller');
 
 
 router.post('/create', authenticateToken, createSchedule);
@@ -27,6 +30,8 @@ router.put('/:scheduleId/payment', authenticateToken, updatePaymentDetails);
 router.get('/export-excel', exportSchedulesToExcel);  
 
 router.get('/transactions/:userId',authenticateToken, getSchedulesByUserId);  // get schedule transactions by userId 
+router.get('/get-due-payments', authenticateToken, getDueSchedules);
+router.put('/update-payment-status/:scheduleId', authenticateToken, updateSchedulePaymentStatus);
 
 module.exports = router;
 

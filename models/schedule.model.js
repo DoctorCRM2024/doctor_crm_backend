@@ -37,6 +37,10 @@ const scheduleSchema = new mongoose.Schema(
       type: Date,
       required: true,
     },
+    paymentRemainderDate : {
+      type: Date,
+      required: true,
+    },
     status: { type: String, enum:['Upcoming', 'Done', 'Not Available'], default: 'Upcoming' },
     isTransferred: { type: Boolean, default: false }, 
 

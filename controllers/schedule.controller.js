@@ -46,7 +46,7 @@ exports.createSchedule = async (req, res) => {
         if (!doctor || doctor.role !== 'Doctor') {
             return res.status(404).json({ message: 'Doctor not found!' });
         }
-
+        const paymentReminderDate = moment(startDate).add(1, 'month').toDate();
         // Create schedule
         const newSchedule = new Schedule({
             doctor: doctorId,
@@ -57,6 +57,7 @@ exports.createSchedule = async (req, res) => {
             day: derivedDay,  // Use the derived day (from request or calculated)
             startDateTime: startDate,
             endDateTime: endDate,
+            paymentReminderDate,
             status: 'Upcoming', // Default status
             paymentAmount,
             paymentStatus,
@@ -82,6 +83,7 @@ exports.createSchedule = async (req, res) => {
             startDateTime: moment(populatedSchedule.startDateTime).format('D MMM, YYYY h:mm A'), // Format date
             endDateTime: moment(populatedSchedule.endDateTime).format('D MMM, YYYY h:mm A'), // Format date
             status: populatedSchedule.status,
+            paymentReminderDate: moment(populatedSchedule.paymentReminderDate).format('D MMM, YYYY h:mm A'), // Format date
             paymentAmount: populatedSchedule.paymentAmount,
             paymentStatus: populatedSchedule.paymentStatus,
             googleEventId : populatedSchedule.googleEventId ,
@@ -120,6 +122,7 @@ exports.updateSchedule = async (req, res) => {
         // Convert to JavaScript Date objects for use in the Schedule model
         const startDate = start.toDate();
         const endDate = end.toDate();
+        const paymentRemainderDate = paymentRemainderDate.toDate();
 
         // Validate the derived day from startDateTime if it's not passed
         let derivedDay = day || start.toLocaleString('en-US', { weekday: 'long' }); // Use provided day or derive from startDateTime
@@ -155,6 +158,7 @@ exports.updateSchedule = async (req, res) => {
         schedule.day = derivedDay;
         schedule.startDateTime = startDate;
         schedule.endDateTime = endDate;
+        schedule.paymentRemainderDate = paymentRemainderDate;
         schedule.paymentAmount = paymentAmount || schedule.paymentAmount; // Update paymentAmount
         schedule.paymentStatus = paymentStatus || schedule.paymentStatus; // Update paymentStatus
         schedule.paymentMethod = paymentMethod || schedule.paymentMethod; // Update paymentMethod
@@ -253,6 +257,7 @@ exports.getAllSchedules = async (req, res) => {
                 day: schedule.day,
                 startDateTime: moment(schedule.startDateTime).format('D MMM, YYYY h:mm A'),
                 endDateTime: moment(schedule.endDateTime).format('D MMM, YYYY h:mm A'),
+                paymentRemainderDate: moment(schedule.paymentRemainderDate).format('D MMM, YYYY h:mm A'),
                 status: schedule.status,
                 paymentAmount: schedule.paymentAmount,
                 paymentStatus: paymentStatus,
@@ -356,6 +361,7 @@ exports.transferAppointment = async (req, res) => {
             day: populatedSchedule.day, // Include day in response
             startDateTime: moment(populatedSchedule.startDateTime).format('D MMM, YYYY h:mm A'), // Format date
             endDateTime: moment(populatedSchedule.endDateTime).format('D MMM, YYYY h:mm A'), // Format date
+            paymentRemainderDate: moment(populatedSchedule.paymentRemainderDate).format('D MMM, YYYY h:mm A'), // Format date
             status: populatedSchedule.status,
             paymentAmount: populatedSchedule.paymentAmount,
             paymentStatus: populatedSchedule.paymentStatus,
@@ -929,6 +935,7 @@ exports.exportSchedulesToExcel = async (req, res) => {
             { header: 'Due Amount', key: 'dueAmount', width: 20 },
             { header: 'Payment Method', key: 'paymentMethod', width: 20 },
             { header: 'Document Proof No.', key: 'documentProofNo', width: 20 },
+            { header: 'Google Event ID', key: 'googleEventId', width: 20 },
         ];
 
         // Populate rows with schedule data
@@ -1046,3 +1053,62 @@ exports.getSchedulesByUserId = async (req, res) => {
     }
 };
 
+
+exports.getDueSchedules = async (req, res) => {
+    try {
+        const today = moment().startOf('day').toDate();
+
+        const schedules = await Schedule.find({
+            paymentReminderDate: { $lt: today }
+        }).populate('doctor', 'fullName').populate('hospital', 'hospitalName');
+
+        if (!schedules || schedules.length === 0) {
+            return res.status(404).json({ message: 'No due payments found.' });
+        }
+
+        res.status(200).json({
+            message: 'Due schedules fetched successfully',
+            schedules,
+        });
+    } catch (error) {
+        console.error('Error fetching due schedules:', error.message);
+        res.status(500).json({ message: 'Internal server error', error: error.message });
+    }
+};
+
+
+exports.updateSchedulePaymentStatus = async (req, res) => {
+    try {
+        const { id } = req.params;
+        const { paymentStatus, extendDateByMonths } = req.body;
+
+        if (!paymentStatus && !extendDateByMonths) {
+            return res.status(400).json({ message: 'Provide either paymentStatus or extendDateByMonths.' });
+        }
+
+        const schedule = await Schedule.findById(id);
+        if (!schedule) {
+            return res.status(404).json({ message: 'Schedule not found.' });
+        }
+
+        if (paymentStatus) {
+            schedule.paymentStatus = paymentStatus;
+        }
+
+        if (extendDateByMonths) {
+            schedule.paymentReminderDate = moment(schedule.paymentReminderDate)
+                .add(extendDateByMonths, 'months')
+                .toDate();
+        }
+
+        await schedule.save();
+
+        res.status(200).json({
+            message: 'Schedule updated successfully',
+            schedule,
+        });
+    } catch (error) {
+        console.error('Error updating schedule:', error.message);
+        res.status(500).json({ message: 'Internal server error', error: error.message });
+    }
+};
