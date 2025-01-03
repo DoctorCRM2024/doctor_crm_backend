@@ -244,7 +244,7 @@ exports.getAllSchedules = async (req, res) => {
 
             return {
                 _id: schedule._id,
-                doctorId: schedule.doctorId,
+                doctorId: schedule.doctor.id,
                 doctorName: doctorName,
                 hospitalName: hospitalName,
                 patientName: schedule.patientName,
@@ -595,8 +595,15 @@ exports.getSchedulesByDateRange = async (req, res) => {
         };
 
         // If user is a doctor, restrict schedules to their ID
-        if (role === 'doctor') {
-            query.doctor = doctorId;
+        if (req.user.role === 'Doctor') {
+            const query = { doctor: req.user.id,
+                $or: [
+                    { startDateTime: { $gte: start.toDate(), $lte: end.toDate() } },
+                    { endDateTime: { $gte: start.toDate(), $lte: end.toDate() } },
+                    { startDateTime: { $lte: start.toDate() }, endDateTime: { $gte: end.toDate() } },
+                ],
+            };
+            
         }
 
         const schedules = await Schedule.find(query)
@@ -663,8 +670,13 @@ exports.getTransferredAppointmentsByDateRange = async (req, res) => {
             endDateTime: { $lte: end.toDate() }, // Less than or equal to end date
           };
 
-        if (role === 'doctor') {
-            query.doctor = doctorId;
+        if (role === 'Doctor') {
+            query = { 
+                doctor: require.user.id,
+                isTransferred: true,
+                startDateTime: { $gte: start.toDate() }, // Greater than or equal to start date
+                endDateTime: { $lte: end.toDate() }, // Less than or equal to end date
+              };
         } 
 
         // Fetch transferred appointments within the given date range
