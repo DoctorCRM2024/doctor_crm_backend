@@ -703,15 +703,13 @@ exports.getTransferredAppointmentsByDateRange = async (req, res) => {
         if (!start.isValid() || !end.isValid()) {
             return res.status(400).json({ message: 'Invalid date format. Use "YYYY-MM-DD" format.' });
         }
-
-        const { role, doctorId } = req.user
         
-        query = { isTransferred: true,
+        let query = { isTransferred: true,
             startDateTime: { $gte: start.toDate() }, // Greater than or equal to start date
             endDateTime: { $lte: end.toDate() }, // Less than or equal to end date
           };
 
-        if (role === 'Doctor') {
+        if (req.user.role === 'Doctor') {
             query = { 
                 createdByDoctor: require.user.id,
                 isTransferred: true,
@@ -1125,26 +1123,30 @@ exports.getDueSchedules = async (req, res) => {
 
 exports.updateSchedulePaymentStatus = async (req, res) => {
     try {
-        const { id } = req.params;
-        const { paymentStatus, extendDateByMonths } = req.body;
+        const { scheduleId } = req.params;
+        const { paymentStatus, newReminderDate } = req.body; // Accept newReminderDate instead of extendDateByMonths
 
-        if (!paymentStatus && !extendDateByMonths) {
-            return res.status(400).json({ message: 'Provide either paymentStatus or extendDateByMonths.' });
+        if (!paymentStatus && !newReminderDate) {
+            return res.status(400).json({ message: 'Provide either paymentStatus or newReminderDate.' });
         }
 
-        const schedule = await Schedule.findById(id);
+        const schedule = await Schedule.findById(scheduleId);
         if (!schedule) {
             return res.status(404).json({ message: 'Schedule not found.' });
         }
 
+        // Update paymentStatus if provided
         if (paymentStatus) {
             schedule.paymentStatus = paymentStatus;
         }
 
-        if (extendDateByMonths) {
-            schedule.paymentReminderDate = moment(schedule.paymentReminderDate)
-                .add(extendDateByMonths, 'months')
-                .toDate();
+        // Update paymentReminderDate if newReminderDate is provided
+        if (newReminderDate) {
+            const parsedDate = moment(newReminderDate, 'YYYY-MM-DD', true); // Validate and parse the date
+            if (!parsedDate.isValid()) {
+                return res.status(400).json({ message: 'Invalid date format. Use YYYY-MM-DD.' });
+            }
+            schedule.paymentReminderDate = parsedDate.toDate();
         }
 
         await schedule.save();
