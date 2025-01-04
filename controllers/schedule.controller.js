@@ -7,7 +7,9 @@ const { query } = require('express');
 
 exports.createSchedule = async (req, res) => {
     try {
-        const { doctorId, hospitalName, patientName, surgeryType, startDateTime, endDateTime, day, paymentAmount, paymentStatus, googleEventId  } = req.body;
+        const { doctorId, hospitalName, patientName, surgeryType, 
+            startDateTime, endDateTime, day, paymentAmount, 
+            paymentStatus, googleEventId, paymentMethod } = req.body;
 
         // Validate the start and end date/times
         if (!startDateTime || !endDateTime) {
@@ -58,6 +60,7 @@ exports.createSchedule = async (req, res) => {
             startDateTime: startDate,
             endDateTime: endDate,
             paymentReminderDate,
+            paymentMethod: paymentMethod || 'N/A', // Default payment method
             status: 'Upcoming', // Default status
             paymentAmount,
             paymentStatus,
@@ -86,6 +89,7 @@ exports.createSchedule = async (req, res) => {
             paymentReminderDate: moment(populatedSchedule.paymentReminderDate).format('D MMM, YYYY h:mm A'), // Format date
             paymentAmount: populatedSchedule.paymentAmount,
             paymentStatus: populatedSchedule.paymentStatus,
+            paymentMethod: populatedSchedule.paymentMethod,
             googleEventId : populatedSchedule.googleEventId ,
         };
 
@@ -498,6 +502,7 @@ exports.getTransferredAppointments = async (req, res) => {
             day: schedule.day,
             startDateTime: moment(schedule.startDateTime).format('D MMM, YYYY h:mm A'),
             endDateTime: moment(schedule.endDateTime).format('D MMM, YYYY h:mm A'),
+            paymentReminderDate: moment(schedule.paymentReminderDate).format('D MMM, YYYY h:mm A'),
             status: schedule.status,
             paymentAmount: schedule.paymentAmount || 0,
             paymentMethod: schedule.paymentMethod || 'N/A',
@@ -1061,16 +1066,24 @@ exports.getDueSchedules = async (req, res) => {
     try {
         const today = moment().startOf('day').toDate();
 
-        let query = { paymentReminderDate: { $lt: today } };
+        let query = { paymentStatus: 'Pending', paymentReminderDate: { $lt: today } };
 
         if (req.user.role === 'Doctor') {
-            query = { doctor: req.user.id, paymentReminderDate: { $lt: today } };
+            query = { 
+                doctor: req.user.id, 
+                paymentStatus: 'Pending', 
+                paymentReminderDate: { $lt: today } 
+            };
+        }
 
-        const schedules = await Schedule.find(query).populate('doctor', 'fullName').populate('hospital', 'hospitalName');
+        const schedules = await Schedule.find(query)
+            .populate('doctor', 'fullName')
+            .populate('hospital', 'hospitalName');
 
         if (!schedules || schedules.length === 0) {
             return res.status(404).json({ message: 'No due payments found.' });
         }
+
         const formattedSchedules = schedules.map(schedule => {
             const doctorName = schedule.doctor ? schedule.doctor.fullName : 'No doctor assigned';
             const hospitalName = schedule.hospital ? schedule.hospital.hospitalName : 'No hospital assigned';
@@ -1079,7 +1092,7 @@ exports.getDueSchedules = async (req, res) => {
 
             return {
                 _id: schedule._id,
-                doctorId: schedule.doctor.id,
+                doctorId: schedule.doctor?._id || 'N/A', // Added optional chaining for safety
                 doctorName: doctorName,
                 hospitalName: hospitalName,
                 patientName: schedule.patientName,
