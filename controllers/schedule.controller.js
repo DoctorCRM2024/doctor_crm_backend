@@ -1061,9 +1061,12 @@ exports.getDueSchedules = async (req, res) => {
     try {
         const today = moment().startOf('day').toDate();
 
-        const schedules = await Schedule.find({
-            paymentReminderDate: { $lt: today }
-        }).populate('doctor', 'fullName').populate('hospital', 'hospitalName');
+        let query = { paymentReminderDate: { $lt: today } };
+
+        if (req.user.role === 'Doctor') {
+            query = { doctor: req.user.id, paymentReminderDate: { $lt: today } };
+
+        const schedules = await Schedule.find(query).populate('doctor', 'fullName').populate('hospital', 'hospitalName');
 
         if (!schedules || schedules.length === 0) {
             return res.status(404).json({ message: 'No due payments found.' });
