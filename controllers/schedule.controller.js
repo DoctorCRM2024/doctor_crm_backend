@@ -1068,10 +1068,37 @@ exports.getDueSchedules = async (req, res) => {
         if (!schedules || schedules.length === 0) {
             return res.status(404).json({ message: 'No due payments found.' });
         }
+        const formattedSchedules = schedules.map(schedule => {
+            const doctorName = schedule.doctor ? schedule.doctor.fullName : 'No doctor assigned';
+            const hospitalName = schedule.hospital ? schedule.hospital.hospitalName : 'No hospital assigned';
+            const dueAmount = schedule.paymentAmount - (schedule.amountReceived || 0);
+            const paymentStatus = dueAmount <= 0 ? 'Done' : 'Pending';
+
+            return {
+                _id: schedule._id,
+                doctorId: schedule.doctor.id,
+                doctorName: doctorName,
+                hospitalName: hospitalName,
+                patientName: schedule.patientName,
+                surgeryType: schedule.surgeryType,
+                day: schedule.day,
+                startDateTime: moment(schedule.startDateTime).format('D MMM, YYYY h:mm A'),
+                endDateTime: moment(schedule.endDateTime).format('D MMM, YYYY h:mm A'),
+                paymentReminderDate: moment(schedule.paymentReminderDate).format('D MMM, YYYY h:mm A'),
+                status: schedule.status,
+                paymentAmount: schedule.paymentAmount,
+                paymentStatus: paymentStatus,
+                amountReceived: schedule.amountReceived,
+                dueAmount: dueAmount > 0 ? dueAmount : 0,
+                paymentMethod: schedule.paymentMethod || 'N/A',
+                documentProofNo: schedule.documentProofNo || 'N/A',
+                googleEventId: schedule.googleEventId || 'N/A',
+            };
+        });
 
         res.status(200).json({
             message: 'Due schedules fetched successfully',
-            schedules,
+            schedules: formattedSchedules,
         });
     } catch (error) {
         console.error('Error fetching due schedules:', error.message);
