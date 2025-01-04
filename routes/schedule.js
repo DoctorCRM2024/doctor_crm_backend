@@ -27,7 +27,7 @@ router.get('/upcoming-status',authenticateToken, getUpcomingSchedules);  // Rout
 router.get('/done-status', authenticateToken, getDoneSchedules);     // Route to fetch all done schedules
 router.put('/:scheduleId/payment', authenticateToken, updatePaymentDetails);
 
-router.get('/export-excel', exportSchedulesToExcel);  
+router.get('/export-excel', authenticateToken, exportSchedulesToExcel);  
 
 router.get('/transactions/:userId',authenticateToken, getSchedulesByUserId);  // get schedule transactions by userId 
 router.get('/get-due-payments', authenticateToken, getDueSchedules);

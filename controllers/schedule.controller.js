@@ -711,7 +711,7 @@ exports.getTransferredAppointmentsByDateRange = async (req, res) => {
 
         if (req.user.role === 'Doctor') {
             query = { 
-                createdByDoctor: require.user.id,
+                createdByDoctor: req.user.id,
                 isTransferred: true,
                 startDateTime: { $gte: start.toDate() }, // Greater than or equal to start date
                 endDateTime: { $lte: end.toDate() }, // Less than or equal to end date
