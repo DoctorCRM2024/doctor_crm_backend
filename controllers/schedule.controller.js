@@ -256,7 +256,7 @@ exports.getAllSchedules = async (req, res) => {
 
             return {
                 _id: schedule._id,
-                doctorId: schedule.doctor.id,
+                doctorId: schedule.doctor.id || 'N/A',
                 doctorName: doctorName,
                 hospitalName: hospitalName,
                 patientName: schedule.patientName,
@@ -494,7 +494,7 @@ exports.getTransferredAppointments = async (req, res) => {
         // Format the schedules response
         const formattedSchedules = transferredSchedules.map(schedule => ({
             _id: schedule._id,
-            doctorId: schedule.doctor.id,
+            doctorId: schedule.doctor.id || 'N/A',
             doctorName: schedule.doctor?.fullName || 'N/A',
             hospitalName: schedule.hospital?.hospitalName || 'N/A',
             patientName: schedule.patientName,
