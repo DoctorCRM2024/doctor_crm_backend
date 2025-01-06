@@ -10,7 +10,7 @@ app.use(express.json());
 
 // Configure CORS middleware
 const corsOptions = {
-    origin: 'http://localhost:5173', // Specify your frontend origin
+    origin: 'https://docschedule.in/', // Specify your frontend origin
     credentials: true, // Allow credentials (cookies, authorization headers, etc.)
   };
   app.use(cors(corsOptions));
