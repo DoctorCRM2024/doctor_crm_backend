@@ -163,7 +163,6 @@ const deleteHospital = async (req, res) => {
 const getAllHospitals = async (req, res) => {
     try {
         let hospitals;
-        console.log(req.user.id, req.user.id )
         // if (req.user.role !== 'Admin') {
         //     let doctor_id = new Types.ObjectId(req.user.id);
         //     // Fetch hospitals for a doctor with filtered schedule details
