@@ -3,6 +3,7 @@ const User= require('../models/user.model');
 const moment= require('moment')
 const Schedule= require('../models/schedule.model')
 const ExcelJS= require('exceljs');
+const { Types } = require('mongoose');
 
 // Add a new hospital
 const addHospital = async (req, res) => {
@@ -159,83 +160,100 @@ const deleteHospital = async (req, res) => {
 // };
 
 
-
 const getAllHospitals = async (req, res) => {
     try {
-        let hospitals; 
+        let hospitals;
+        console.log(req.user.id, req.user.id )
+        // if (req.user.role !== 'Admin') {
+        //     let doctor_id = new Types.ObjectId(req.user.id);
+        //     // Fetch hospitals for a doctor with filtered schedule details
+        //     hospitals = await Hospital.aggregate([
+        //         {
+        //             $lookup: {
+        //                 from: 'schedules', // Name of the Schedule collection
+        //                 let: { hospitalId: '$_id' }, // Pass the hospital ID
+        //                 pipeline: [
+        //                     {
+        //                         $match: {
+        //                             $expr: {
+        //                                 $and: [
+        //                                     { $eq: ['$hospital', '$$hospitalId'] }, // Match hospital
+        //                                     { $eq: ['$doctor', doctor_id] } // Match doctor
+        //                                 ]
+        //                             }
+        //                         }
+        //                     }
+        //                 ],
+        //                 as: 'filteredSchedules' // Only schedules for the specific doctor
+        //             }
+        //         },
+        //         {
+        //             $addFields: {
+        //                 doneScheduleCount: {
+        //                     $size: {
+        //                         $filter: {
+        //                             input: '$filteredSchedules',
+        //                             as: 'schedule',
+        //                             cond: { $eq: ['$$schedule.status', 'Done'] } // Count 'Done' schedules
+        //                         }
+        //                     }
+        //                 },
+        //                 totalSchedulePayment: {
+        //                     $sum: '$filteredSchedules.paymentAmount' // Sum of paymentAmount for the doctor
+        //                 },
+        //                 totalAmountReceived: {
+        //                     $sum: '$filteredSchedules.amountReceived' // Sum of amountReceived for the doctor
+        //                 },
+        //                 totalDueAmount: {
+        //                     $subtract: ['$totalSchedulePayment', '$totalAmountReceived'] // Calculate pending amount
+        //                 }
+        //             }
+        //         },
+        //         {
+        //             $project: {
+        //                 filteredSchedules: 0 // Exclude schedules from final output
+        //             }
+        //         }
+        //     ]
+        //     );
 
-        // Check if the user has the role 'Admin'
-        if (req.user.role !== 'Admin') {
-            // Fetch hospitals without transaction details for normal users
-            hospitals = await Hospital.aggregate([
-                {
-                    $lookup: {
-                        from: 'schedules', // Name of the Schedule collection in MongoDB
-                        localField: '_id',  // The hospital's ID field
-                        foreignField: 'hospital', // The 'hospital' field in the Schedule collection
-                        as: 'schedules',
-                    },
+        // Fetch all hospitals with full transaction details for admin
+        hospitals = await Hospital.aggregate([
+            {
+                $lookup: {
+                    from: 'schedules', // Name of the Schedule collection in MongoDB
+                    localField: '_id',  // The hospital's ID field
+                    foreignField: 'hospital', // The 'hospital' field in the Schedule collection
+                    as: 'schedules',
                 },
-                {
-                    $addFields: {
-                        doneScheduleCount: {
-                            $size: {
-                                $filter: {
-                                    input: '$schedules',
-                                    as: 'schedule',
-                                    cond: { $eq: ['$$schedule.status', 'Done'] }, // Filter 'Done' schedules
-                                },
+            },
+            {
+                $addFields: {
+                    totalSchedulePayment: { $sum: '$schedules.paymentAmount' }, // Total payment amount for all schedules
+                    totalAmountReceived: { $sum: '$schedules.amountReceived' }, // Total received amount for all schedules
+                    doneScheduleCount: {
+                        $size: {
+                            $filter: {
+                                input: '$schedules',
+                                as: 'schedule',
+                                cond: { $eq: ['$$schedule.status', 'Done'] }, // Count schedules with 'Done' status
                             },
                         },
                     },
                 },
-                {
-                    $project: {
-                        schedules: 0, // Exclude the schedules field from the response
-                        totalSchedulePayment: 0, // Exclude total payment details
-                        totalAmountReceived: 0, // Exclude total received amount
-                        totalDueAmount: 0, // Exclude due amount
-                    },
+            },
+            {
+                $addFields: {
+                    totalDueAmount: { $subtract: ['$totalSchedulePayment', '$totalAmountReceived'] }, // Calculate remaining due amount
                 },
-            ]);
-        } else {
-            // Fetch all hospitals with transaction details for admin users
-            hospitals = await Hospital.aggregate([
-                {
-                    $lookup: {
-                        from: 'schedules', // Name of the Schedule collection in MongoDB
-                        localField: '_id',  // The hospital's ID field
-                        foreignField: 'hospital', // The 'hospital' field in the Schedule collection
-                        as: 'schedules',
-                    },
+            },
+            {
+                $project: {
+                    schedules: 0, // Exclude the schedules field from the response
                 },
-                {
-                    $addFields: {
-                        totalSchedulePayment: { $sum: '$schedules.paymentAmount' }, // Total payment amount for all schedules
-                        totalAmountReceived: { $sum: '$schedules.amountReceived' }, // Total received amount for all schedules
-                        doneScheduleCount: {
-                            $size: {
-                                $filter: {
-                                    input: '$schedules',
-                                    as: 'schedule',
-                                    cond: { $eq: ['$$schedule.status', 'Done'] }, // Filter 'Done' schedules
-                                },
-                            },
-                        },
-                    },
-                },
-                {
-                    $addFields: {
-                        totalDueAmount: { $subtract: ['$totalSchedulePayment', '$totalAmountReceived'] }, // Calculate remaining due amount
-                    },
-                },
-                {
-                    $project: {
-                        schedules: 0, // Exclude the schedules field from the response
-                    },
-                },
-            ]);
-        }
+            },
+        ]);
+
 
         if (!hospitals.length) {
             return res.status(404).json({ message: 'No hospitals found.' });
@@ -253,11 +271,9 @@ const getAllHospitals = async (req, res) => {
             updatedAt: hospital.updatedAt,
             __v: hospital.__v,
             doneScheduleCount: hospital.doneScheduleCount,
-            ...(req.user.role === 'Admin' ? {
-                totalDueAmount: hospital.totalDueAmount,
-                totalSchedulePayment: hospital.totalSchedulePayment,
-                totalAmountReceived: hospital.totalAmountReceived,
-            } : {}),
+            totalDueAmount: hospital.totalDueAmount,
+            totalSchedulePayment: hospital.totalSchedulePayment,
+            totalAmountReceived: hospital.totalAmountReceived,
         }));
 
         return res.status(200).json({
@@ -268,8 +284,7 @@ const getAllHospitals = async (req, res) => {
         console.error(error);
         return res.status(500).json({ message: 'An error occurred.', error: error.message });
     }
-};
-
+}
 
 
 const exportHospitalsToExcel = async (req, res) => {
@@ -429,7 +444,7 @@ const getHospitalDoneSchedules = async (req, res) => {
 
 const getTotalPaymentSummary = async (req, res) => {
     try {
-        const userId = req.user._id; // Make sure the field is '_id' or 'id' based on token
+        const userId = req.user.id; // Make sure the field is '_id' or 'id' based on token
         const userRole = req.user.role;
 
         console.log('User ID:', userId); // Log the user ID to verify it's set correctly
@@ -444,9 +459,7 @@ const getTotalPaymentSummary = async (req, res) => {
         // Check user role and modify the query accordingly
         if (userRole === 'Admin') {
             // Admin can see all schedules (doctor and patient)
-            schedules = await Schedule.find({
-                $or: [{ doctor: userId }, { patientId: userId }]
-            })
+            schedules = await Schedule.find({})
             .populate('doctor', 'fullName')
             .populate('hospital', 'hospitalName');
         } else if (userRole === 'Doctor') {
